@@ -1,0 +1,95 @@
+@startuml
+'=================== 飞行物顶层 ==================='
+abstract class AbstractFlyingObject {
+    # locationX, locationY, speedX, speedY
+    # width, height, isValid
+    + forward()
+    + crash(AbstractFlyingObject):boolean
+    + vanish()
+    + notValid():boolean
+    + getLocationX/Y():int
+    + getWidth/Height():int
+}
+
+'=================== 飞机体系 ==================='
+abstract class AbstractAircraft {
+    # hp, maxHp
+    + decreaseHp(int)
+    + getHp():int
+    + {abstract} shoot():List<BaseBullet>
+}
+
+AbstractFlyingObject <|-- AbstractAircraft
+
+class HeroAircraft {
+    - {static} instance:HeroAircraft
+    - shootNum:int
+    - power:int
+    - direction:int
+    - originalFireStrategy:FireStrategy
+    - effectExecutor:ScheduledExecutorService
+    - currentEffect:ScheduledFuture<?>
+        - HeroAircraft(int locationX, int locationY, int speedX, int speedY, int hp)
+    + {static} getInstance(...):HeroAircraft
+    + forward()
+    + shoot():List<BaseBullet>
+    + setTemporaryFireStrategy(FireStrategy,long)
+}
+
+class MobEnemy {
+    + MobEnemy(...)
+    + forward()
+    + shoot():List<BaseBullet>
+}
+class ProEnemy {
+    - shootNum, power, direction
+    + ProEnemy(...)
+    + forward()
+}
+class SuperProEnemy {
+    - SHOOT_NUM=5, POWER=25
+    + SuperProEnemy(...)
+    + forward()
+}
+class BossEnemy {
+    - SHOOT_NUM=20, POWER=30
+    + BossEnemy(...)
+    + forward()
+}
+
+AbstractAircraft <|-- HeroAircraft
+AbstractAircraft <|-- MobEnemy
+AbstractAircraft <|-- ProEnemy
+AbstractAircraft <|-- SuperProEnemy
+AbstractAircraft <|-- BossEnemy
+
+'=================== 子弹体系 ==================='
+abstract class BaseBullet {
+    - power:int
+    + getPower():int
+    + forward()
+}
+class HeroBullet
+class EnemyBullet
+
+AbstractFlyingObject <|-- BaseBullet
+BaseBullet <|-- HeroBullet
+BaseBullet <|-- EnemyBullet
+
+'=================== 道具体系 ==================='
+abstract class AbstractProp {
+    + {abstract} active(HeroAircraft)
+    + forward()
+}
+class Heal
+class Fire
+class Bomb
+class FirePlus
+
+AbstractFlyingObject <|-- AbstractProp
+AbstractProp <|-- Heal
+AbstractProp <|-- Fire
+AbstractProp <|-- Bomb
+AbstractProp <|-- FirePlus
+
+@enduml

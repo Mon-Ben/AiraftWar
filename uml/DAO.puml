@@ -1,0 +1,49 @@
+@startuml
+'================== DAO 接口 =================='
+interface ScoreDao {
+    + addScore(playerName:String, score:int):void
+    + listByDifficulty(difficulty:String):List<ScoreItem>
+    + deleteByRank(difficulty:String, rank:int):void
+    + printRank(difficulty:String):void
+}
+
+'================== 具体实现 =================='
+class FileScoreDao {
+    - BASE_DIR:String = "ranking"
+    - getFile(difficulty:String):File
+    + addScore(playerName:String, score:int):void
+    + listByDifficulty(difficulty:String):List<ScoreItem>
+    + deleteByRank(difficulty:String, rank:int):void
+    + printRank(difficulty:String):void
+}
+
+'================== 数据载体 =================='
+class ScoreItem {
+    - playerName:String
+    - score:int
+    - recordTime:LocalDateTime
+    + getPlayerName():String
+    + getScore():int
+    + getRecordTime():LocalDateTime
+    + toConsoleString(rank:int):String
+    + compareTo(ScoreItem):int
+}
+
+'================== 配置常量 =================='
+class GameConfig {
+    + {static} difficulty:String = "MEDIUM"
+    + {static} soundOn:boolean   = true
+}
+
+'================== 关系 =================='
+ScoreDao <|.right. FileScoreDao
+FileScoreDao .right.> ScoreItem : creates & reads
+FileScoreDao .right.> GameConfig : 读取当前难度
+
+'================== 使用层 =================='
+class Game {
+    - scoreDao:ScoreDao
+    + action():void
+}
+Game -right-> ScoreDao : uses
+@enduml

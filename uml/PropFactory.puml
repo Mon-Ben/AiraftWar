@@ -1,0 +1,62 @@
+@startuml
+'https://plantuml.com/class-diagram
+
+'工厂接口'
+interface PropFactory {
+    + createProp(locationX:int, locationY:int, speedX:int, speedY:int):AbstractProp
+}
+
+class HealPropFactory {
+    + createProp(locationX:int, locationY:int, speedX:int, speedY:int):AbstractProp
+}
+
+class FirePlusPropFactory {
+    + createProp(locationX:int, locationY:int, speedX:int, speedY:int):AbstractProp
+}
+
+class BombPropFactory {
+    + createProp(locationX:int, locationY:int, speedX:int, int speedY):AbstractProp
+}
+
+class BombPropFactory {
+    + createProp(locationX:int, locationY:int, speedX:int, int speedY):AbstractProp
+}
+
+class Heal {
+    + Heal(int locationX, int locationY, int speedX, int speedY)
+    + forward():void
+    + active(HeroAircraft):void
+}
+
+class Fire {
+    + Fire(int locationX, int locationY, int speedX, int speedY)
+    + forward():void
+    + active(HeroAircraft):void
+}
+
+class FirePlus {
+    + FirePlus(int locationX, int locationY, int speedX, int speedY)
+    + forward():void
+    + active(HeroAircraft):void
+}
+
+class Bomb {
+    + Bomb(int locationX, int locationY, int speedX, int speedY)
+    + forward():void
+    + active(HeroAircraft):void
+    + playSoundEffect(String):void
+
+}
+
+PropFactory <|.. HealPropFactory
+PropFactory <|.. FirePropFactory
+PropFactory <|.. FirePlusPropFactory
+PropFactory <|.. BombPropFactory
+
+
+HealPropFactory  ..> Heal   : creates
+FirePropFactory  ..> Fire   : creates
+FirePlusPropFactory  ..> FirePlus   : creates
+BombPropFactory  ..> Bomb   : creates
+Game -left-> PropFactory : uses
+@enduml
