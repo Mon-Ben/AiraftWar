@@ -21,6 +21,8 @@ import edu.hitsz.factory.*;
 import edu.hitsz.observer.BombClearObserver;
 import edu.hitsz.prop.AbstractProp;
 import edu.hitsz.prop.Bomb;
+import edu.hitsz.network.BattleMessage;
+import edu.hitsz.network.BattleSocketClient;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -82,9 +84,30 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     private Handler uiHandler;  // 用于与主线程通信
     private int finalScore;     // 记录最终得分
 
+    private boolean multiplayerMode;
+    private String roomId;
+    private String playerId;
+    private BattleSocketClient socketClient;
+    private volatile int opponentScore = 0;
+    private volatile int opponentHp = 100;
+    private volatile boolean opponentDead = false;
+    private volatile boolean localDead = false;
+    private volatile boolean battleEnded = false;
+    private int lastSentScore = -1;
+    private int lastSentHp = -1;
+
     public GameView(Context context, Handler uiHandler) {
+        this(context, uiHandler, false, null, null, null);
+    }
+
+    public GameView(Context context, Handler uiHandler, boolean multiplayerMode,
+                    String roomId, String playerId, BattleSocketClient socketClient) {
         super(context);
         this.uiHandler = uiHandler;
+        this.multiplayerMode = multiplayerMode;
+        this.roomId = roomId;
+        this.playerId = playerId;
+        this.socketClient = socketClient;
         holder = getHolder();
         holder.addCallback(this);
         setFocusable(true);
@@ -130,9 +153,143 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
                     return true;
                 }
                 heroAircraft.setLocation((int) x, (int) y);
+                sendPlayerStateIfNeeded();
             }
             return true;
         });
+
+        setupBattleSocketListener();
+    }
+
+    private void setupBattleSocketListener() {
+        if (!multiplayerMode || socketClient == null) {
+            return;
+        }
+        socketClient.setListener(new BattleSocketClient.Listener() {
+            @Override
+            public void onConnected() {
+                sendPlayerState(true);
+            }
+
+            @Override
+            public void onMessage(BattleMessage message) {
+                handleBattleMessage(message);
+            }
+
+            @Override
+            public void onError(String message) {
+                Log.e("GameView", "battle socket error: " + message);
+            }
+
+            @Override
+            public void onClosed() {
+                if (!battleEnded) {
+                    handleOpponentLeft();
+                }
+            }
+        });
+    }
+
+    private void handleBattleMessage(BattleMessage message) {
+        if (message == null || message.type == null) {
+            return;
+        }
+        switch (message.type) {
+            case "PLAYER_STATE":
+                opponentScore = message.score;
+                opponentHp = message.hp;
+                opponentDead = message.dead;
+                break;
+            case "GAME_OVER":
+                opponentScore = message.score;
+                opponentHp = message.hp;
+                opponentDead = true;
+                if (localDead && !battleEnded) {
+                    finishBattle(score, opponentScore);
+                }
+                break;
+            case "BATTLE_END":
+                int myScore = "P1".equals(playerId) ? message.p1Score : message.p2Score;
+                int rivalScore = "P1".equals(playerId) ? message.p2Score : message.p1Score;
+                finishBattle(myScore, rivalScore);
+                break;
+            case "OPPONENT_LEFT":
+                handleOpponentLeft();
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void sendPlayerStateIfNeeded() {
+        if (!multiplayerMode || localDead) {
+            return;
+        }
+        int hp = heroAircraft.getHp();
+        if (score != lastSentScore || hp != lastSentHp) {
+            sendPlayerState(false);
+        }
+    }
+
+    private void sendPlayerState(boolean force) {
+        if (!multiplayerMode || socketClient == null || battleEnded) {
+            return;
+        }
+        int hp = heroAircraft.getHp();
+        if (!force && score == lastSentScore && hp == lastSentHp) {
+            return;
+        }
+        BattleMessage state = BattleMessage.create("PLAYER_STATE");
+        state.roomId = roomId;
+        state.playerId = playerId;
+        state.x = heroAircraft.getLocationX();
+        state.y = heroAircraft.getLocationY();
+        state.hp = hp;
+        state.score = score;
+        state.dead = localDead;
+        socketClient.send(state);
+        lastSentScore = score;
+        lastSentHp = hp;
+    }
+
+    private void sendGameOver() {
+        if (!multiplayerMode || socketClient == null || battleEnded) {
+            return;
+        }
+        BattleMessage gameOver = BattleMessage.create("GAME_OVER");
+        gameOver.roomId = roomId;
+        gameOver.playerId = playerId;
+        gameOver.x = heroAircraft.getLocationX();
+        gameOver.y = heroAircraft.getLocationY();
+        gameOver.hp = Math.max(0, heroAircraft.getHp());
+        gameOver.score = score;
+        gameOver.dead = true;
+        socketClient.send(gameOver);
+        lastSentScore = score;
+        lastSentHp = gameOver.hp;
+    }
+
+    private void finishBattle(int myScore, int rivalScore) {
+        if (battleEnded) {
+            return;
+        }
+        battleEnded = true;
+        gameOverFlag = true;
+        isRunning = false;
+        audioManager.stopBgm();
+        Message msg = new Message();
+        msg.what = 1;
+        msg.arg1 = myScore;
+        msg.arg2 = rivalScore;
+        uiHandler.sendMessage(msg);
+    }
+
+    private void handleOpponentLeft() {
+        if (battleEnded) {
+            return;
+        }
+        opponentDead = true;
+        finishBattle(score, opponentScore);
     }
 
     @Override
@@ -151,13 +308,16 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
 
         // 设置英雄机初始位置
         heroAircraft.setLocation(screenWidth / 2, screenHeight - 150);
+        sendPlayerState(true);
     }
 
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
-        isRunning = false;
+        releaseGame();
         try {
-            gameThread.join();
+            if (gameThread != null) {
+                gameThread.join();
+            }
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -235,12 +395,21 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             finalScore = score;
             Log.d("GameView", "Game Over, finalScore=" + finalScore);  // 添加日志
 
-            // 通过 Handler 通知主线程游戏结束
             Message msg = new Message();
             msg.what = 1;
-            msg.arg1 = finalScore;
-            uiHandler.sendMessage(msg);
+            if (multiplayerMode) {
+                localDead = true;
+                sendGameOver();
+                if (opponentDead) {
+                    finishBattle(score, opponentScore);
+                }
+            } else {
+                msg.arg1 = finalScore;
+                uiHandler.sendMessage(msg);
+            }
         }
+
+        sendPlayerStateIfNeeded();
     }
 
     private void drawGame() {
@@ -292,6 +461,13 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             paint.setColor(Color.WHITE);
             canvas.drawText("Score: " + score, 20, 80, paint);
             canvas.drawText("Life: " + heroAircraft.getHp(), 20, 140, paint);
+            if (multiplayerMode) {
+                canvas.drawText("Opponent Score: " + opponentScore, 20, 200, paint);
+                canvas.drawText("Opponent Life: " + opponentHp, 20, 260, paint);
+                if (opponentDead) {
+                    canvas.drawText("Opponent Dead", 20, 320, paint);
+                }
+            }
 
             if (gameOverFlag) {
                 paint.setTextSize(100);
@@ -484,6 +660,17 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
 
     public void resumeGame() {
         audioManager.resumeBgm();
+    }
+
+    public void releaseGame() {
+        isRunning = false;
+        if (multiplayerMode && socketClient != null && !battleEnded) {
+            BattleMessage disconnect = BattleMessage.create("DISCONNECT");
+            disconnect.roomId = roomId;
+            disconnect.playerId = playerId;
+            socketClient.send(disconnect);
+            socketClient.close();
+        }
     }
 
 

@@ -15,18 +15,26 @@ import edu.hitsz.audio.AudioManager;
 import edu.hitsz.dao.FileScoreDao;
 import edu.hitsz.dao.GameConfig;
 import edu.hitsz.dao.ScoreDao;
+import edu.hitsz.network.LeaderboardApiClient;
+import edu.hitsz.network.LeaderboardEntry;
+import edu.hitsz.network.BattleSession;
 
 public class GameActivity extends AppCompatActivity {
     private GameView gameView;
     private AudioManager audioManager;
     private ScoreDao scoreDao;
+    private boolean multiplayerMode;
 
     private Handler uiHandler = new Handler(Looper.getMainLooper()) {
         @Override
         public void handleMessage(Message msg) {
             if (msg.what == 1) {
                 int finalScore = msg.arg1;
-                showInputNameDialog(finalScore);
+                if (multiplayerMode) {
+                    showBattleResultDialog(msg.arg1, msg.arg2);
+                } else {
+                    showInputNameDialog(finalScore);
+                }
             }
         }
     };
@@ -49,8 +57,17 @@ public class GameActivity extends AppCompatActivity {
         // 初始化 DAO
         scoreDao = new FileScoreDao(this);
 
+        multiplayerMode = getIntent().getBooleanExtra("multiplayer", false);
+        String roomId = getIntent().getStringExtra("roomId");
+        String playerId = getIntent().getStringExtra("playerId");
+
         // 创建游戏视图，传入 Handler
-        gameView = new GameView(this, uiHandler);
+        if (multiplayerMode) {
+            gameView = new GameView(this, uiHandler, true, roomId, playerId, BattleSession.getSocketClient());
+            BattleSession.clear();
+        } else {
+            gameView = new GameView(this, uiHandler);
+        }
         setContentView(gameView);
     }
 
@@ -69,6 +86,7 @@ public class GameActivity extends AppCompatActivity {
                     }
                     // 保存得分
                     scoreDao.addScore(name, finalScore);
+                    uploadScoreToServer(name, finalScore);
                     // 跳转到排行榜
                     Intent intent = new Intent(GameActivity.this, RankActivity.class);
                     startActivity(intent);
@@ -77,6 +95,39 @@ public class GameActivity extends AppCompatActivity {
                 })
                 .setNegativeButton("取消", (dialog, which) -> {
                     // 不保存直接退出
+                    finish();
+                })
+                .setCancelable(false)
+                .show();
+    }
+
+    private void uploadScoreToServer(String name, int finalScore) {
+        LeaderboardEntry entry = new LeaderboardEntry(
+                name,
+                finalScore,
+                GameConfig.difficulty,
+                System.currentTimeMillis());
+        new LeaderboardApiClient().uploadScore(entry, new LeaderboardApiClient.UploadCallback() {
+            @Override
+            public void onSuccess() {
+                Log.d("GameActivity", "score uploaded to HTTP server");
+            }
+
+            @Override
+            public void onError(String message) {
+                Log.e("GameActivity", "score upload failed: " + message);
+            }
+        });
+    }
+
+    private void showBattleResultDialog(int myScore, int opponentScore) {
+        new AlertDialog.Builder(this)
+                .setTitle("对战结束")
+                .setMessage("我的分数：" + myScore + "\n对手分数：" + opponentScore)
+                .setPositiveButton("返回主菜单", (dialog, which) -> {
+                    Intent intent = new Intent(GameActivity.this, DifficultyActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
                     finish();
                 })
                 .setCancelable(false)
@@ -102,6 +153,9 @@ public class GameActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (gameView != null) {
+            gameView.releaseGame();
+        }
         if (audioManager != null) {
             audioManager.release();
         }

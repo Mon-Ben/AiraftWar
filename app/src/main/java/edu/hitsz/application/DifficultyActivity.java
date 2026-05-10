@@ -28,6 +28,8 @@ public class DifficultyActivity extends AppCompatActivity {
         Button btnEasy = findViewById(R.id.btn_easy);
         Button btnMedium = findViewById(R.id.btn_medium);
         Button btnHard = findViewById(R.id.btn_hard);
+        Button btnGlobalRank = findViewById(R.id.btn_global_rank);
+        Button btnBattle = findViewById(R.id.btn_battle);
 
         ivHero1 = findViewById(R.id.iv_hero1);
         ivHero2 = findViewById(R.id.iv_hero2);
@@ -61,6 +63,12 @@ public class DifficultyActivity extends AppCompatActivity {
                 startGame("HARD");
             }
         });
+
+        btnGlobalRank.setOnClickListener(v ->
+                startActivity(new Intent(DifficultyActivity.this, GlobalRankActivity.class)));
+
+        btnBattle.setOnClickListener(v ->
+                startActivity(new Intent(DifficultyActivity.this, BattleRoomActivity.class)));
     }
     private void selectHero(String heroTag, ImageView selectedView) {
         selectedHero = heroTag;

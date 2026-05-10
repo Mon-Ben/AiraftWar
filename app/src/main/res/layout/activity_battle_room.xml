@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="@drawable/start_bg"
+    android:padding="24dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="双人联机对战"
+        android:textSize="28sp"
+        android:textColor="#FFFFFF"
+        android:layout_marginBottom="20dp"/>
+
+    <TextView
+        android:id="@+id/tv_battle_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="请先连接服务器"
+        android:textSize="16sp"
+        android:textColor="#FFFFFF"
+        android:gravity="center"
+        android:layout_marginBottom="12dp"/>
+
+    <EditText
+        android:id="@+id/et_room_id"
+        android:layout_width="220dp"
+        android:layout_height="48dp"
+        android:hint="输入房间号"
+        android:inputType="number"
+        android:gravity="center"
+        android:background="#FFFFFF"
+        android:textColor="#000000"
+        android:textColorHint="#666666"
+        android:textCursorDrawable="@null"
+        android:padding="8dp"/>
+
+    <Button
+        android:id="@+id/btn_create_room"
+        android:layout_width="220dp"
+        android:layout_height="wrap_content"
+        android:text="创建房间"
+        android:textSize="18sp"
+        android:layout_marginTop="12dp"/>
+
+    <Button
+        android:id="@+id/btn_join_room"
+        android:layout_width="220dp"
+        android:layout_height="wrap_content"
+        android:text="加入房间"
+        android:textSize="18sp"
+        android:layout_marginTop="8dp"/>
+
+    <Button
+        android:id="@+id/btn_battle_back"
+        android:layout_width="220dp"
+        android:layout_height="wrap_content"
+        android:text="返回"
+        android:textSize="18sp"
+        android:layout_marginTop="20dp"/>
+
+</LinearLayout>

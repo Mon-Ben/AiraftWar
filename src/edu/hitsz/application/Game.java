@@ -15,7 +15,7 @@ import edu.hitsz.factory.*;
 import edu.hitsz.observer.BombClearObserver;
 import edu.hitsz.prop.AbstractProp;
 import edu.hitsz.prop.Bomb;
-import edu.hitsz.ui.RankDialog;
+import edu.hitsz.ui.RankDialog;a
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import videos.MusicThread;
 

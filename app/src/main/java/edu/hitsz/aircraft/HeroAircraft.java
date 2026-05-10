@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit;
  * 英雄飞机，游戏玩家操控
  * @author hitsz
  */
-public class HeroAircraft extends AbstractAircraft {
+public class  HeroAircraft extends AbstractAircraft {
 
     private int shootNum = 2;
 

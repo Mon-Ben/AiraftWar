@@ -24,3 +24,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "AircraftWar"
 include ':app'
+include ':leaderboardServer'
+include ':battleServer'
