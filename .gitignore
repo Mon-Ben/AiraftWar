@@ -28,7 +28,6 @@ leaderboardServer/leaderboard_scores.json
 /src/
 /test/
 /out/
-/uml/
 
 # Keep only README.md as project documentation
 *.md

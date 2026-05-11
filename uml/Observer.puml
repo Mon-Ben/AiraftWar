@@ -1,0 +1,22 @@
+@startuml
+interface GameObserver {
+    + onBombClear(enemyAircrafts,enemyBullets,hero,score):int
+}
+class BombClearObserver {
+    + onBombClear(...):int
+}
+
+class Game {
+    - bombObserver:GameObserver
+}
+class Bomb {
+    + active(HeroAircraft)
+}
+
+Game --> GameObserver : uses
+Bomb ..> GameObserver : 触发 onBombClear
+
+BombClearObserver ..> AbstractAircraft : 修改列表
+BombClearObserver ..> BaseBullet      : 修改列表
+GameObserver ..> HeroAircraft : 读分
+@enduml

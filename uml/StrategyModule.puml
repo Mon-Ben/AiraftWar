@@ -1,0 +1,72 @@
+@startuml
+package edu.hitsz.strategy {
+    interface FireStrategy {
+        + fire(AbstractAircraft plane): List<BaseBullet>
+    }
+
+    class DirectFireStrategy {
+        + fire(AbstractAircraft plane): List<BaseBullet>
+    }
+
+    class ScatterFireStrategy {
+        + fire(AbstractAircraft plane): List<BaseBullet>
+    }
+
+    class RingFireStrategy {
+        + fire(AbstractAircraft plane): List<BaseBullet>
+    }
+}
+
+package edu.hitsz.aircraft {
+    abstract class AbstractAircraft {
+        # fireStrategy: FireStrategy
+        + setFireStrategy(FireStrategy): void
+        + getFireStrategy(): FireStrategy
+        + shoot(): List<BaseBullet>
+    }
+
+    class HeroAircraft {
+        + setFireStrategy(FireStrategy): void
+    }
+
+    class MobEnemy {
+        + MobEnemy(...)
+    }
+
+    class ProEnemy {
+        + ProEnemy(...)
+    }
+
+    class BossEnemy {
+        + BossEnemy(...)
+    }
+}
+
+package edu.hitsz.bullet {
+    abstract class BaseBullet
+    class HeroBullet
+    class EnemyBullet
+}
+
+'========== 依赖关系 =========='
+FireStrategy <|.. DirectFireStrategy
+FireStrategy <|.. ScatterFireStrategy
+FireStrategy <|.. RingFireStrategy
+
+AbstractAircraft --> FireStrategy : uses
+HeroAircraft --|> AbstractAircraft
+MobEnemy --|> AbstractAircraft
+ProEnemy --|> AbstractAircraft
+BossEnemy --|> AbstractAircraft
+
+HeroBullet --|> BaseBullet
+EnemyBullet --|> BaseBullet
+
+DirectFireStrategy ..> HeroBullet : creates
+DirectFireStrategy ..> EnemyBullet : creates
+ScatterFireStrategy ..> HeroBullet : creates
+ScatterFireStrategy ..> EnemyBullet : creates
+RingFireStrategy ..> HeroBullet : creates
+RingFireStrategy ..> EnemyBullet : creates
+
+@enduml

@@ -1,0 +1,36 @@
+@startuml
+'https://plantuml.com/class-diagram
+
+'工厂接口'
+interface EnemyFactory {
+    + createEnemy(locationX:int, locationY:int, speedX:int, speedY:int, hp:int, power:int):AbstractAircraft
+}
+
+class MobEnemyFactory {
+    + createEnemy(locationX:int, locationY:int, speedX:int, speedY:int, hp:int, power:int):AbstractAircraft
+}
+
+class ProEnemyFactory {
+    + createEnemy(locationX:int, locationY:int, speedX:int, speedY:int, hp:int, power:int):AbstractAircraft
+}
+class SuperProEnemyFactory {
+    + createEnemy(locationX:int, locationY:int, speedX:int, speedY:int, hp:int, power:int):AbstractAircraft
+}
+class BossEnemyFactory {
+    + createEnemy(locationX:int, locationY:int, speedX:int, speedY:int, hp:int, power:int):AbstractAircraft
+}
+
+
+EnemyFactory <|.. MobEnemyFactory
+EnemyFactory <|.. ProEnemyFactory
+EnemyFactory <|.. SuperProEnemyFactory
+EnemyFactory <|.. BossEnemyFactory
+
+
+MobEnemyFactory  ..> MobEnemy     : creates
+ProEnemyFactory  ..> ProEnemy     : creates
+SuperProEnemyFactory  ..> SuperProEnemy     : creates
+BossEnemyFactory  ..> BossEnemy     : creates
+
+Game -right-> EnemyFactory : uses
+@enduml

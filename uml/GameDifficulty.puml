@@ -1,0 +1,36 @@
+@startuml
+abstract class GameDifficultyTemplate {
+    # shouldUpgrade(time,score):boolean
+    # upgradeFactors()
+    # applyCurrentParameters(Game,score)
+    + final applyDifficulty(Game,score,time)
+    + getEnemyMaxNumber():int
+    + getEnemyCycle():int
+    + getHeroShootCycle():int
+    + getEnemyShootCycle():int
+    + getEliteProb():double
+    + getAttributeMultiplier():double
+    + hasBoss():boolean
+    + bossHpIncreases():boolean
+    + getBossHpMultiplier(int):double
+}
+
+class EasyDifficulty
+class MediumDifficulty
+class HardDifficulty
+
+GameDifficultyTemplate <|-- EasyDifficulty
+GameDifficultyTemplate <|-- MediumDifficulty
+GameDifficultyTemplate <|-- HardDifficulty
+
+class Game {
+    + setEnemyMaxNumber(int)
+    + setEnemyCycle(int)
+    + setHeroShootCycle(int)
+    + setEnemyShootCycle(int)
+    + setEliteProb(double)
+    + setAttributeMultiplier(double)
+}
+
+Game -right-> GameDifficultyTemplate : uses
+@enduml

@@ -1,0 +1,19 @@
+@startuml
+'https://plantuml.com/class-diagram
+
+class HeroAircraft {
+    - {static} instance:HeroAircraft
+    - shootNum:int
+    - power:int
+    - direction:int
+    - originalFireStrategy:FireStrategy
+    - effectExecutor:ScheduledExecutorService
+    - currentEffect:ScheduledFuture<?>
+        - HeroAircraft(int locationX, int locationY, int speedX, int speedY, int hp)
+    + {static} getInstance(...):HeroAircraft
+    + forward()
+    + shoot():List<BaseBullet>
+    + setTemporaryFireStrategy(FireStrategy,long)
+}
+HeroAircraft   ..> HeroAircraft    : creates
+@enduml
