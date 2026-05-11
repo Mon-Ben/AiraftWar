@@ -29,6 +29,8 @@ public class BattleSocketClient {
     private BufferedReader in;
     private PrintWriter writer;
     private volatile boolean running;
+    private volatile boolean connected;
+    private volatile boolean closing;
 
     public interface Listener {
         void onConnected();
@@ -52,35 +54,59 @@ public class BattleSocketClient {
     public void connect() {
         connectExecutor.execute(() -> {
             try {
+                closing = false;
                 socket = new Socket();
                 socket.connect(new InetSocketAddress(NetworkConfig.SERVER_HOST, NetworkConfig.SOCKET_PORT), 5000);
+                Log.d(TAG, "connected to " + NetworkConfig.SERVER_HOST + ":" + NetworkConfig.SOCKET_PORT);
                 in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
                 writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8)), true);
                 running = true;
+                connected = true;
                 Listener currentListener = getListener();
                 if (currentListener != null) {
                     mainHandler.post(currentListener::onConnected);
                 }
                 String fromServer;
                 while (running && (fromServer = in.readLine()) != null) {
-                    BattleMessage message = gson.fromJson(fromServer, BattleMessage.class);
+                    Log.d(TAG, "receive raw: " + fromServer);
+                    BattleMessage message;
+                    try {
+                        message = gson.fromJson(fromServer, BattleMessage.class);
+                    } catch (Exception parseError) {
+                        Log.e(TAG, "message parse failed: " + fromServer, parseError);
+                        Listener errorListener = getListener();
+                        if (errorListener != null && !closing) {
+                            mainHandler.post(() -> errorListener.onError("服务器消息解析失败"));
+                        }
+                        continue;
+                    }
+                    Log.d(TAG, "receive message type=" + (message == null ? "null" : message.type)
+                            + ", roomId=" + (message == null ? "null" : message.roomId)
+                            + ", playerId=" + (message == null ? "null" : message.playerId));
                     Listener messageListener = getListener();
                     if (messageListener != null) {
                         mainHandler.post(() -> messageListener.onMessage(message));
                     }
                 }
+                Log.d(TAG, "read loop ended, running=" + running + ", closing=" + closing
+                        + ", socketClosed=" + (socket == null || socket.isClosed()));
             } catch (Exception e) {
                 Log.e(TAG, "socket error", e);
-                Listener currentListener = getListener();
-                if (currentListener != null) {
-                    mainHandler.post(() -> currentListener.onError(e.getMessage()));
+                if (!closing) {
+                    Listener currentListener = getListener();
+                    if (currentListener != null) {
+                        mainHandler.post(() -> currentListener.onError(e.getMessage()));
+                    }
                 }
             } finally {
                 running = false;
+                connected = false;
                 closeInternal();
-                Listener currentListener = getListener();
-                if (currentListener != null) {
-                    mainHandler.post(currentListener::onClosed);
+                if (!closing) {
+                    Listener currentListener = getListener();
+                    if (currentListener != null) {
+                        mainHandler.post(currentListener::onClosed);
+                    }
                 }
             }
         });
@@ -88,26 +114,43 @@ public class BattleSocketClient {
 
     public void send(BattleMessage message) {
         sendExecutor.execute(() -> {
-            if (writer != null) {
-                message.timestamp = System.currentTimeMillis();
-                String json = gson.toJson(message);
-                Log.d(TAG, "send: " + json);
-                writer.println(json);
+            if (!connected || writer == null) {
+                Listener currentListener = getListener();
+                if (currentListener != null && !closing) {
+                    mainHandler.post(() -> currentListener.onError("尚未连接服务器，消息发送失败"));
+                }
+                return;
+            }
+            message.timestamp = System.currentTimeMillis();
+            String json = gson.toJson(message);
+            Log.d(TAG, "send: " + json);
+            writer.println(json);
+            if (writer.checkError()) {
+                connected = false;
+                Listener currentListener = getListener();
+                if (currentListener != null && !closing) {
+                    mainHandler.post(() -> currentListener.onError("消息发送失败，连接可能已断开"));
+                }
             }
         });
     }
 
     public void close() {
+        Log.d(TAG, "close called", new Throwable("close caller"));
+        closing = true;
         running = false;
+        connected = false;
         sendExecutor.execute(this::closeInternal);
     }
 
     private void closeInternal() {
         try {
             if (socket != null && !socket.isClosed()) {
+                Log.d(TAG, "closeInternal: closing socket");
                 socket.close();
             }
-        } catch (IOException ignored) {
+        } catch (IOException e) {
+            Log.e(TAG, "closeInternal failed", e);
         }
     }
 }

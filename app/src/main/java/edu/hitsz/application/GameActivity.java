@@ -152,6 +152,7 @@ public class GameActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        Log.d("GameActivity", "onDestroy, isFinishing=" + isFinishing());
         super.onDestroy();
         if (gameView != null) {
             gameView.releaseGame();

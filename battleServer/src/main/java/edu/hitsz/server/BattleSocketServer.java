@@ -40,6 +40,7 @@ public class BattleSocketServer {
 
     private static final class ClientService implements Runnable {
         private final Socket socket;
+        private volatile boolean disconnected;
         private BufferedReader in;
         private PrintWriter out;
         private Room room;
@@ -56,12 +57,17 @@ public class BattleSocketServer {
                 out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8)), true);
                 send(BattleMessage.info("CONNECTED", "connection successful"));
                 String content;
-                while ((content = in.readLine()) != null) {
+                while (!disconnected && (content = in.readLine()) != null) {
                     System.out.println("receive from client: " + content);
                     handleMessage(content);
                 }
+                if (!disconnected) {
+                    System.out.println("client readLine returned null, peer closed connection, playerId=" + playerId);
+                }
             } catch (Exception e) {
-                System.out.println("client disconnected: " + e.getMessage());
+                if (!disconnected) {
+                    System.out.println("client disconnected: " + e.getMessage());
+                }
             } finally {
                 disconnect();
             }
@@ -79,7 +85,7 @@ public class BattleSocketServer {
                 send(BattleMessage.error("message type required"));
                 return;
             }
-            System.out.println("handle message type: " + message.type);
+            System.out.println("handle message type: " + message.type + ", roomId=" + message.roomId + ", playerId=" + playerId);
             switch (message.type) {
                 case "CREATE_ROOM":
                     createRoom();
@@ -126,12 +132,21 @@ public class BattleSocketServer {
                 send(BattleMessage.error("already in room"));
                 return;
             }
+            if (roomId == null || roomId.trim().isEmpty()) {
+                send(BattleMessage.error("room id required"));
+                return;
+            }
             Room target = ROOMS.get(roomId);
             if (target == null) {
                 send(BattleMessage.error("room not found"));
                 return;
             }
             synchronized (target) {
+                if (target.player1 == null) {
+                    send(BattleMessage.error("room owner has left"));
+                    ROOMS.remove(roomId);
+                    return;
+                }
                 if (target.player2 != null) {
                     send(BattleMessage.error("room is full"));
                     return;
@@ -144,8 +159,11 @@ public class BattleSocketServer {
             joined.roomId = roomId;
             joined.playerId = playerId;
             send(joined);
+            System.out.println("joined room, roomId=" + roomId + ", playerId=" + playerId);
+
             BattleMessage ready = BattleMessage.info("BATTLE_READY", "both players ready");
             ready.roomId = roomId;
+            System.out.println("broadcast BATTLE_READY, roomId=" + roomId);
             target.broadcast(ready);
         }
 
@@ -178,17 +196,29 @@ public class BattleSocketServer {
                 String json = GSON.toJson(message);
                 System.out.println("send to client: " + json);
                 out.println(json);
+                if (out.checkError()) {
+                    System.out.println("send failed, client output stream has error, playerId=" + playerId);
+                }
             }
         }
 
         private void disconnect() {
+            if (disconnected) {
+                return;
+            }
+            disconnected = true;
+            Room currentRoom = room;
+            String currentPlayerId = playerId;
+            room = null;
+            playerId = null;
+            if (currentRoom != null) {
+                currentRoom.remove(this, currentPlayerId);
+            }
             try {
-                if (room != null) {
-                    room.remove(this);
-                }
                 socket.close();
             } catch (IOException ignored) {
             }
+            System.out.println("client cleanup finished, playerId=" + currentPlayerId);
         }
     }
 
@@ -242,17 +272,25 @@ public class BattleSocketServer {
             }
         }
 
-        synchronized void remove(ClientService client) {
+        synchronized void remove(ClientService client, String playerId) {
+            boolean hadOpponent = false;
             if (player1 == client) {
+                hadOpponent = player2 != null;
                 player1 = null;
             }
             if (player2 == client) {
+                hadOpponent = player1 != null;
                 player2 = null;
             }
-            BattleMessage disconnected = BattleMessage.info("OPPONENT_LEFT", "opponent disconnected");
-            broadcast(disconnected);
+            System.out.println("remove client from room, roomId=" + roomId + ", playerId=" + playerId + ", hadOpponent=" + hadOpponent);
+            if (hadOpponent) {
+                BattleMessage disconnected = BattleMessage.info("OPPONENT_LEFT", "opponent disconnected");
+                disconnected.roomId = roomId;
+                broadcast(disconnected);
+            }
             if (player1 == null && player2 == null) {
                 ROOMS.remove(roomId);
+                System.out.println("room removed, roomId=" + roomId);
             }
         }
     }

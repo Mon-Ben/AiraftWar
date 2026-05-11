@@ -1,15 +1,35 @@
+# Android Studio / IntelliJ local files
+.idea/
 *.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+
+# Gradle / Android build outputs
+.gradle/
+build/
+**/build/
+.externalNativeBuild/
+.cxx/
+captures/
+
+# Local machine configuration
 local.properties
+.env
+*.keystore
+*.jks
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Runtime data
+ranking/
+leaderboardServer/leaderboard_scores.json
+
+# Legacy desktop version and generated output
+/src/
+/test/
+/out/
+/uml/
+
+# Keep only README.md as project documentation
+*.md
+!README.md

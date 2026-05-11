@@ -93,6 +93,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     private volatile boolean opponentDead = false;
     private volatile boolean localDead = false;
     private volatile boolean battleEnded = false;
+    private volatile boolean released = false;
     private int lastSentScore = -1;
     private int lastSentHp = -1;
 
@@ -313,16 +314,8 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
 
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
-        releaseGame();
-        try {
-            if (gameThread != null) {
-                gameThread.join();
-            }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        // 释放音频资源
-        audioManager.release();
+        Log.d("GameView", "surfaceDestroyed: stop game loop only, keep socket alive");
+        stopGameLoop();
     }
 
     @Override
@@ -662,8 +655,25 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         audioManager.resumeBgm();
     }
 
-    public void releaseGame() {
+    private void stopGameLoop() {
         isRunning = false;
+        try {
+            if (gameThread != null && gameThread != Thread.currentThread()) {
+                gameThread.join();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    public void releaseGame() {
+        if (released) {
+            Log.d("GameView", "releaseGame ignored: already released");
+            return;
+        }
+        released = true;
+        Log.d("GameView", "releaseGame: multiplayer=" + multiplayerMode + ", battleEnded=" + battleEnded);
+        stopGameLoop();
         if (multiplayerMode && socketClient != null && !battleEnded) {
             BattleMessage disconnect = BattleMessage.create("DISCONNECT");
             disconnect.roomId = roomId;

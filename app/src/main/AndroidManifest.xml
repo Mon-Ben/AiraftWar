@@ -31,7 +31,9 @@
 
         <activity android:name=".application.RankActivity" />
         <activity android:name=".application.GlobalRankActivity" />
-        <activity android:name=".application.BattleRoomActivity" />
+        <activity
+            android:name=".application.BattleRoomActivity"
+            android:screenOrientation="portrait" />
     </application>
 
 </manifest>
